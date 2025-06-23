@@ -120,3 +120,43 @@
     @apply bg-background text-foreground;
   }
 }
+
+@utility gradient {
+  @apply bg-gradient-to-r from-green-600 to-teal-500;
+}
+
+@utility gradient-title {
+  @apply gradient font-extrabold tracking-tighter text-transparent bg-clip-text pb-1 pr-2;
+}
+
+@keyframes cowbounce {
+  0%   { transform: translateY(0) rotate(0deg); }
+  20%  { transform: translateY(-60px) rotate(-10deg); }
+  40%  { transform: translateY(-120px) rotate(15deg); }
+  60%  { transform: translateY(-180px) rotate(-20deg); }
+  80%  { transform: translateY(-220px) rotate(10deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+
+.animate-cowbounce {
+  animation: cowbounce 3s ease-in-out infinite;
+}
+@keyframes clouds {
+  0% { background-position: 0 0; }
+  100% { background-position: 1000px 0; }
+}
+
+.animate-clouds {
+  animation: clouds 60s linear infinite;
+}
+
+@keyframes leafFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(10px) rotate(10deg); }
+}
+
+.animate-leaf {
+  animation: leafFloat 3s ease-in-out infinite;
+}
+
+

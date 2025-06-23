@@ -3,7 +3,7 @@ import "./globals.css";
 import Header from "@/components/header";
 import {Inter} from "next/font/google"
 import { ClerkProvider } from "@clerk/nextjs";
-
+import SyncUserToConvex from "@/components/SyncUserToConvex";
 const inter=Inter({subsets:["latin"]});
 
 export const metadata = {
@@ -20,7 +20,7 @@ export default function RootLayout({ children }) {
         <ClerkProvider>
  
         <ConvexClientProvider>
-
+        <SyncUserToConvex/>
        
         <Header/>
         <main className="min-h-screen">{children}</main>
