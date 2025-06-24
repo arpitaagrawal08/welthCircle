@@ -3,15 +3,11 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 
-/* ──────────────────────────────────────────────────────────────────────────
-   1. getAllContacts – 1‑to‑1 expense contacts + groups
-   ──────────────────────────────────────────────────────────────────────── */
+
 export const getAllContacts = query({
   handler: async (ctx) => {
-    // Use the centralized getCurrentUser instead of duplicating auth logic
     const currentUser = await ctx.runQuery(internal.users.getCurrentUser);
 
-    /* ── personal expenses where YOU are the payer ─────────────────────── */
     const expensesYouPaid = await ctx.db
       .query("expenses")
       .withIndex("by_user_and_group", (q) =>
@@ -19,7 +15,6 @@ export const getAllContacts = query({
       )
       .collect();
 
-    /* ── personal expenses where YOU are **not** the payer ─────────────── */
     const expensesNotPaidByYou = (
       await ctx.db
         .query("expenses")
@@ -33,7 +28,6 @@ export const getAllContacts = query({
 
     const personalExpenses = [...expensesYouPaid, ...expensesNotPaidByYou];
 
-    /* ── extract unique counterpart IDs ─────────────────────────────────── */
     const contactIds = new Set();
     personalExpenses.forEach((exp) => {
       if (exp.paidByUserId !== currentUser._id)
@@ -44,7 +38,6 @@ export const getAllContacts = query({
       });
     });
 
-    /* ── fetch user docs ───────────────────────────────────────────────── */
     const contactUsers = await Promise.all(
       [...contactIds].map(async (id) => {
         const u = await ctx.db.get(id);
@@ -60,7 +53,6 @@ export const getAllContacts = query({
       })
     );
 
-    /* ── groups where current user is a member ─────────────────────────── */
     const userGroups = (await ctx.db.query("groups").collect())
       .filter((g) => g.members.some((m) => m.userId === currentUser._id))
       .map((g) => ({
@@ -79,9 +71,7 @@ export const getAllContacts = query({
   },
 });
 
-/* ──────────────────────────────────────────────────────────────────────────
-   2. createGroup – create a new group
-   ──────────────────────────────────────────────────────────────────────── */
+
 export const createGroup = mutation({
   args: {
     name: v.string(),
