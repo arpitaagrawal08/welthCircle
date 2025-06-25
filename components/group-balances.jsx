@@ -84,7 +84,7 @@ export function GroupBalances({ balances }) {
             <div>
               <h3 className="text-sm font-medium flex items-center mb-3">
                 <ArrowUpCircle className="h-4 w-4 text-green-500 mr-2" />
-                Owed to you
+               You Are Owed
               </h3>
               <div className="space-y-3">
                 {owedByMembers.map((member) => (
@@ -115,7 +115,7 @@ export function GroupBalances({ balances }) {
             <div>
               <h3 className="text-sm font-medium flex items-center mb-3">
                 <ArrowDownCircle className="h-4 w-4 text-red-500 mr-2" />
-                You owe
+                You Owe
               </h3>
               <div className="space-y-3">
                 {owingToMembers.map((member) => (

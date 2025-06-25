@@ -80,7 +80,6 @@ export const getGroupOrMembers = query({
 export const getGroupExpenses = query({
   args: { groupId: v.id("groups") },
   handler: async (ctx, { groupId }) => {
-    // Use centralized getCurrentUser function
     const currentUser = await ctx.runQuery(internal.users.getCurrentUser);
 
     const group = await ctx.db.get(groupId);
@@ -144,6 +143,7 @@ export const getGroupExpenses = query({
     }
 
     /* ----------  net the pair‑wise ledger ---------- */
+    // simplify debts
     ids.forEach((a) => {
       ids.forEach((b) => {
         if (a >= b) return; // visit each unordered pair once
