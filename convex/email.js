@@ -9,14 +9,13 @@ export const sendEmail = action({
     subject: v.string(),
     html: v.string(),
     text: v.optional(v.string()),
-    apiKey: v.string(),
   },
   handler: async (ctx, args) => {
-    const resend = new Resend(args.apiKey);
+    const resend = new Resend(process.env.RESEND_API_KEY); // ✅ Use env var here
 
     try {
       const result = await resend.emails.send({
-        from: "Splitr <onboarding@resend.dev>",
+        from: "splitr <onboarding@resend.dev>",
         to: args.to,
         subject: args.subject,
         html: args.html,
