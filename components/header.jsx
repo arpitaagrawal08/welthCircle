@@ -10,13 +10,14 @@ import { BarLoader } from "react-spinners";
 import { Authenticated, Unauthenticated } from "convex/react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import ThemeToggle from "@/components/ThemeToggle"; // 👈 import toggle
 
 export default function Header() {
   const { isLoading } = useStoreUser();
   const path = usePathname();
 
   return (
-    <header className="fixed top-0 w-full border-b bg-white/95 backdrop-blur z-50 supports-[backdrop-filter]:bg-white/60">
+    <header className="fixed top-0 w-full border-b bg-white/95 dark:bg-zinc-900/80 backdrop-blur z-50 supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-zinc-900/60">
       <nav className="container mx-auto px-4 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
           <Image
@@ -46,6 +47,8 @@ export default function Header() {
         )}
 
         <div className="flex items-center gap-4">
+          <ThemeToggle /> {/* 👈 toggle placed here */}
+
           <Authenticated>
             <Link href="/dashboard">
               <Button
