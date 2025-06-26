@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -27,12 +29,8 @@ export default function LandingPage() {
           </p>
 
           <div className="flex flex-col items-center gap-4 sm:flex-row justify-center">
-            <Button
-              asChild
-              size="lg"
-              className="bg-green-600 hover:bg-green-700"
-            >
-              <Link href="/dashboard">
+            <Button asChild size="lg" className="bg-green-600 hover:bg-green-700">
+              <Link href="/options">
                 Get Started
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
@@ -85,7 +83,6 @@ export default function LandingPage() {
                 <div className={`rounded-full p-3 ${bg}`}>
                   <Icon className={`h-6 w-6 ${color}`} />
                 </div>
-
                 <h3 className="text-xl font-bold">{title}</h3>
                 <p className="text-gray-500">{description}</p>
               </Card>
@@ -98,7 +95,7 @@ export default function LandingPage() {
       <section id="how-it-works" className="py-20">
         <div className="container mx-auto px-4 md:px-6 text-center">
           <Badge variant="outline" className="bg-green-100 text-green-700">
-            How It Works
+            How It Works
           </Badge>
           <h2 className="gradient-title mt-2 text-3xl md:text-4xl">
             Splitting expenses has never been easier
@@ -139,7 +136,6 @@ export default function LandingPage() {
                   <p className="text-gray-500">{quote}</p>
                   <div className="flex items-center space-x-3">
                     <Avatar>
-                      {/* Placeholder avatar */}
                       <AvatarImage src={image} alt={name} />
                       <AvatarFallback className="uppercase">
                         {name.charAt(0)}
@@ -168,7 +164,7 @@ export default function LandingPage() {
             stress‑free.
           </p>
           <Button asChild size="lg" className="bg-green-800 hover:opacity-90">
-            <Link href="/dashboard">
+            <Link href="/options">
               Get Started
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
@@ -178,7 +174,7 @@ export default function LandingPage() {
 
       {/* ───── Footer ───── */}
       <footer className="border-t bg-gray-50 py-12 text-center text-sm text-muted-foreground">
-        © {new Date().getFullYear()} WelthCircle. All rights reserved.
+        © {new Date().getFullYear()} WelthCircle. All rights reserved.
       </footer>
     </div>
   );
