@@ -15,6 +15,7 @@ import { ParticipantSelector } from "./participant-selector";
 import { GroupSelector } from "./group-selector";
 import { CategorySelector } from "./category-selector";
 import { SplitSelector } from "./split-selector";
+import { CurrencySelector } from "./currency-selector";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import {
@@ -35,6 +36,7 @@ const expenseSchema = z.object({
     .refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
       message: "Amount must be a positive number",
     }),
+  currency: z.string().min(1, "Currency is required"),
   category: z.string().optional(),
   date: z.date(),
   paidByUserId: z.string().min(1, "Payer is required"),
@@ -47,6 +49,7 @@ export function ExpenseForm({ type = "individual", onSuccess }) {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [splits, setSplits] = useState([]);
+  const [selectedCurrency, setSelectedCurrency] = useState("USD");
 
   // Mutations and queries
   const { data: currentUser } = useConvexQuery(api.users.getCurrentUser);
@@ -67,6 +70,7 @@ export function ExpenseForm({ type = "individual", onSuccess }) {
     defaultValues: {
       description: "",
       amount: "",
+      currency: "USD",
       category: "",
       date: new Date(),
       paidByUserId: currentUser?._id || "",
@@ -127,6 +131,7 @@ export function ExpenseForm({ type = "individual", onSuccess }) {
       await createExpense.mutate({
         description: data.description,
         amount: amount,
+        currency: selectedCurrency,
         category: data.category || "Other",
         date: data.date.getTime(), // Convert to timestamp
         paidByUserId: data.paidByUserId,
@@ -186,8 +191,22 @@ export function ExpenseForm({ type = "individual", onSuccess }) {
           </div>
         </div>
 
-        {/* Category and date */}
+        {/* Currency and category */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Currency</Label>
+            <CurrencySelector
+              value={selectedCurrency}
+              onChange={(currency) => {
+                setSelectedCurrency(currency);
+                setValue("currency", currency);
+              }}
+            />
+            {errors.currency && (
+              <p className="text-sm text-red-500">{errors.currency.message}</p>
+            )}
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="category">Category</Label>
 
@@ -200,39 +219,40 @@ export function ExpenseForm({ type = "individual", onSuccess }) {
               }}
             />
           </div>
+        </div>
 
-          <div className="space-y-2">
-            <Label>Date</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !selectedDate && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {selectedDate ? (
-                    format(selectedDate, "PPP")
-                  ) : (
-                    <span>Pick a date</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={(date) => {
-                    setSelectedDate(date);
-                    setValue("date", date);
-                  }}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
+        {/* Date */}
+        <div className="space-y-2">
+          <Label>Date</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !selectedDate && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {selectedDate ? (
+                  format(selectedDate, "PPP")
+                ) : (
+                  <span>Pick a date</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={(date) => {
+                  setSelectedDate(date);
+                  setValue("date", date);
+                }}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
         </div>
 
         {/* Group selector (for group expenses) */}
@@ -321,6 +341,7 @@ export function ExpenseForm({ type = "individual", onSuccess }) {
                 participants={participants}
                 paidByUserId={paidByUserId}
                 onSplitsChange={setSplits} // Use setSplits directly
+                currency={selectedCurrency}
               />
             </TabsContent>
             <TabsContent value="percentage" className="pt-4">
@@ -333,6 +354,7 @@ export function ExpenseForm({ type = "individual", onSuccess }) {
                 participants={participants}
                 paidByUserId={paidByUserId}
                 onSplitsChange={setSplits} // Use setSplits directly
+                currency={selectedCurrency}
               />
             </TabsContent>
             <TabsContent value="exact" className="pt-4">
@@ -345,6 +367,7 @@ export function ExpenseForm({ type = "individual", onSuccess }) {
                 participants={participants}
                 paidByUserId={paidByUserId}
                 onSplitsChange={setSplits} // Use setSplits directly
+                currency={selectedCurrency}
               />
             </TabsContent>
           </Tabs>

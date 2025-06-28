@@ -7,6 +7,7 @@ export const createExpense = mutation({
   args: {
     description: v.string(),
     amount: v.number(),
+    currency: v.string(), // Currency code
     category: v.optional(v.string()),
     date: v.number(), // timestamp
     paidByUserId: v.id("users"),
@@ -53,6 +54,7 @@ export const createExpense = mutation({
     const expenseId = await ctx.db.insert("expenses", {
       description: args.description,
       amount: args.amount,
+      currency: args.currency,
       category: args.category || "Other",
       date: args.date,
       paidByUserId: args.paidByUserId,
@@ -96,7 +98,7 @@ export const getExpensesBetweenUsers = query({
 
     /* ───── 2. Keep only rows where BOTH are involved (payer or split) ─ */
     const expenses = candidateExpenses.filter((e) => {
-      // me is always involved (I’m the payer OR in splits – verified below)
+      // me is always involved (I'm the payer OR in splits – verified below)
       const meInSplits = e.splits.some((s) => s.userId === me._id);
       const themInSplits = e.splits.some((s) => s.userId === userId);
 

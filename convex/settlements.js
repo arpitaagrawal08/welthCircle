@@ -9,6 +9,7 @@ import { internal } from "./_generated/api";
 export const createSettlement = mutation({
   args: {
     amount: v.number(), // must be > 0
+    currency: v.string(), // Currency code
     note: v.optional(v.string()),
     paidByUserId: v.id("users"),
     receivedByUserId: v.id("users"),
@@ -45,6 +46,7 @@ export const createSettlement = mutation({
     /* ── insert ──────────────────────────────────────────────────────────── */
     return await ctx.db.insert("settlements", {
       amount: args.amount,
+      currency: args.currency,
       note: args.note,
       date: Date.now(), // server‑side timestamp
       paidByUserId: args.paidByUserId,

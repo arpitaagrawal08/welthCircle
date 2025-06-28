@@ -8,9 +8,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { getCategoryById } from "@/lib/expense-categories";
 import { getCategoryIcon } from "@/lib/expense-categories";
-import { Trash2 } from "lucide-react";
+import { Trash2, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { currencySymbols } from "@/lib/currencies";
 
 export function ExpenseList({
   expenses,
@@ -56,16 +57,9 @@ export function ExpenseList({
   };
 
   // Handle delete expense
-  const handleDeleteExpense = async (expense) => {
-    // Use basic JavaScript confirm
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this expense? This action cannot be undone."
-    );
-
-    if (!confirmed) return;
-
+  const handleDeleteExpense = async (expenseId) => {
     try {
-      await deleteExpense.mutate({ expenseId: expense._id });
+      await deleteExpense.mutate({ expenseId });
       toast.success("Expense deleted successfully");
     } catch (error) {
       toast.error("Failed to delete expense: " + error.message);
@@ -73,114 +67,93 @@ export function ExpenseList({
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="space-y-4">
       {expenses.map((expense) => {
         const payer = getUserDetails(expense.paidByUserId, expense);
         const isCurrentUserPayer = expense.paidByUserId === currentUser?._id;
         const category = getCategoryById(expense.category);
         const CategoryIcon = getCategoryIcon(category.id);
         const showDeleteOption = canDeleteExpense(expense);
+        const currencySymbol = currencySymbols[expense.currency] || expense.currency;
 
         return (
-          <Card
-            className="hover:bg-muted/30 transition-colors"
-            key={expense._id}
-          >
-            <CardContent className="py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {/* Category icon */}
-                  <div className="bg-primary/10 p-2 rounded-full">
-                    <CategoryIcon className="h-5 w-5 text-primary" />
-                  </div>
-
-                  <div>
+          <Card key={expense._id} className="overflow-hidden">
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
                     <h3 className="font-medium">{expense.description}</h3>
-                    <div className="flex items-center text-sm text-muted-foreground gap-2">
-                      <span>
-                        {format(new Date(expense.date), "MMM d, yyyy")}
-                      </span>
-                      {showOtherPerson && (
-                        <>
-                          <span>•</span>
-                          <span>
-                            {isCurrentUserPayer ? "You" : payer.name} paid
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <div className="text-right">
-                    <div className="font-medium">
-                      ${expense.amount.toFixed(2)}
-                    </div>
-                    {isGroupExpense ? (
-                      <Badge variant="outline" className="mt-1">
-                        Group expense
+                    {expense.category && (
+                      <Badge variant="secondary" className="text-xs">
+                        {expense.category}
                       </Badge>
-                    ) : (
-                      <div className="text-sm text-muted-foreground">
-                        {isCurrentUserPayer ? (
-                          <span className="text-green-600">You paid</span>
-                        ) : (
-                          <span className="text-red-600">
-                            {payer.name} paid
-                          </span>
-                        )}
-                      </div>
                     )}
                   </div>
+                  
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+                    <span>{format(new Date(expense.date), "MMM d, yyyy")}</span>
+                    <span>•</span>
+                    <span>
+                      Paid by {isCurrentUserPayer ? "you" : payer.name}
+                    </span>
+                  </div>
 
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Total:</span>
+                      <span className="font-bold text-lg">
+                        {currencySymbol}{expense.amount.toFixed(2)}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      {expense.splits.map((split) => {
+                        const splitUser = getUserDetails(split.userId, expense);
+                        const isCurrentUser = split.userId === currentUser?._id;
+                        const shouldShow =
+                          showOtherPerson ||
+                          (!showOtherPerson &&
+                            (split.userId === currentUser?._id ||
+                              split.userId === otherPersonId));
+
+                        if (!shouldShow) return null;
+
+                        return (
+                          <div
+                            key={split.userId}
+                            className="flex items-center justify-between text-sm"
+                          >
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-6 w-6">
+                                <AvatarImage src={splitUser.imageUrl} />
+                                <AvatarFallback>
+                                  {splitUser.name?.charAt(0)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span>
+                                {isCurrentUser ? "You" : splitUser.name}: {currencySymbol}
+                              </span>
+                            </div>
+                            <span className="font-medium">
+                              {split.amount.toFixed(2)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 ml-4">
                   {showDeleteOption && (
                     <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 rounded-full text-red-500 hover:text-red-700 hover:bg-red-100"
-                      onClick={() => handleDeleteExpense(expense)}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteExpense(expense._id)}
                     >
                       <Trash2 className="h-4 w-4" />
-                      <span className="sr-only">Delete expense</span>
                     </Button>
                   )}
-                </div>
-              </div>
-
-              {/* Display splits info */}
-              <div className="mt-3 text-sm">
-                <div className="flex gap-2 flex-wrap">
-                  {expense.splits.map((split, idx) => {
-                    const splitUser = getUserDetails(split.userId, expense);
-                    const isCurrentUser = split.userId === currentUser?._id;
-                    const shouldShow =
-                      showOtherPerson ||
-                      (!showOtherPerson &&
-                        (split.userId === currentUser?._id ||
-                          split.userId === otherPersonId));
-
-                    if (!shouldShow) return null;
-
-                    return (
-                      <Badge
-                        key={idx}
-                        variant={split.paid ? "outline" : "secondary"}
-                        className="flex items-center gap-1"
-                      >
-                        <Avatar className="h-4 w-4">
-                          <AvatarImage src={splitUser.imageUrl} />
-                          <AvatarFallback>
-                            {splitUser.name?.charAt(0) || "?"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span>
-                          {isCurrentUser ? "You" : splitUser.name}: $
-                          {split.amount.toFixed(2)}
-                        </span>
-                      </Badge>
-                    );
-                  })}
                 </div>
               </div>
             </CardContent>

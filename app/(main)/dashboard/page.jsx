@@ -16,8 +16,13 @@ import Link from "next/link";
 import { ExpenseSummary } from "./_components/expense-summary";
 import { BalanceSummary } from "./_components/balance-summary";
 import { GroupList } from "./_components/group-list";
+import { useCurrency } from "@/context/CurrencyContext";
+import { currencySymbols } from "@/lib/currencies";
 
 export default function Dashboard() {
+  const { currency } = useCurrency();
+  const currencySymbol = currencySymbols[currency] || currency;
+
   const { data: balances, isLoading: balancesLoading } = useConvexQuery(
     api.dashboard.getUserBalances
   );
@@ -69,14 +74,14 @@ export default function Dashboard() {
                 <div className="text-2xl font-bold">
                   {balances?.totalBalance > 0 ? (
                     <span className="text-green-600">
-                      +${balances?.totalBalance.toFixed(2)}
+                      +{currencySymbol}{balances?.totalBalance.toFixed(2)}
                     </span>
                   ) : balances?.totalBalance < 0 ? (
                     <span className="text-red-600">
-                      -${Math.abs(balances?.totalBalance).toFixed(2)}
+                      -{currencySymbol}{Math.abs(balances?.totalBalance).toFixed(2)}
                     </span>
                   ) : (
-                    <span>$0.00</span>
+                    <span>{currencySymbol}0.00</span>
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -97,7 +102,7 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-600">
-                  ${balances?.youAreOwed.toFixed(2)}
+                  {currencySymbol}{balances?.youAreOwed.toFixed(2)}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   From {balances?.oweDetails?.youAreOwedBy?.length || 0} people
@@ -115,7 +120,7 @@ export default function Dashboard() {
                 {balances?.oweDetails?.youOwe?.length > 0 ? (
                   <>
                     <div className="text-2xl font-bold text-red-600">
-                      ${balances?.youOwe.toFixed(2)}
+                      {currencySymbol}{balances?.youOwe.toFixed(2)}
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
                       To {balances?.oweDetails?.youOwe?.length || 0} people
@@ -123,7 +128,7 @@ export default function Dashboard() {
                   </>
                 ) : (
                   <>
-                    <div className="text-2xl font-bold">$0.00</div>
+                    <div className="text-2xl font-bold">{currencySymbol}0.00</div>
                     <p className="text-xs text-muted-foreground mt-1">
                       You don't owe anyone
                     </p>
@@ -141,6 +146,7 @@ export default function Dashboard() {
               <ExpenseSummary
                 monthlySpending={monthlySpending}
                 totalSpent={totalSpent}
+                currency={currency}
               />
             </div>
 
