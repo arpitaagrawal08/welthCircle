@@ -1,147 +1,120 @@
 "use client";
 
-import { useConvexQuery } from "@/hooks/use-convex-query";
-import { api } from "@/convex/_generated/api";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowUpCircle, ArrowDownCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { useUser } from "@clerk/nextjs";
+import { currencySymbols } from "@/lib/currencies";
 
+export function GroupBalances({ group, balances }) {
+  const { user } = useUser();
 
-export function GroupBalances({ balances }) {
-  const { data: currentUser } = useConvexQuery(api.users.getCurrentUser);
-
-  if (!balances?.length || !currentUser) {
+  if (!balances || balances.length === 0) {
     return (
-      <div className="text-center py-4 text-muted-foreground">
-        No balance information available
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Group Balances</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">No balances to show</p>
+        </CardContent>
+      </Card>
     );
   }
 
-  const me = balances.find((b) => b.id === currentUser._id);
-  if (!me) {
-    return (
-      <div className="text-center py-4 text-muted-foreground">
-        You’re not part of this group
-      </div>
-    );
-  }
+  // Find current user's balance
+  const me = balances.find((member) => member.userId === user?.id);
+  const otherMembers = balances.filter((member) => member.userId !== user?.id);
 
-  const userMap = Object.fromEntries(balances.map((b) => [b.id, b]));
-
-  // Who owes me?
-  const owedByMembers = me.owedBy
-    .map(({ from, amount }) => ({ ...userMap[from], amount }))
-    .sort((a, b) => b.amount - a.amount);
-
-  // Whom do I owe?
-  const owingToMembers = me.owes
-    .map(({ to, amount }) => ({ ...userMap[to], amount }))
-    .sort((a, b) => b.amount - a.amount);
-
-  const isAllSettledUp =
-    me.totalBalance === 0 &&
-    owedByMembers.length === 0 &&
-    owingToMembers.length === 0;
-
-  /* ───── UI ────────────────────────────────────────────────────────────── */
   return (
-    <div className="space-y-4">
-      {/* Current user's total balance */}
-      <div className="text-center pb-4 border-b">
-        <p className="text-sm text-muted-foreground mb-1">Your balance</p>
-        <p
-          className={`text-2xl font-bold ${
-            me.totalBalance > 0
-              ? "text-green-600"
-              : me.totalBalance < 0
-                ? "text-red-600"
-                : ""
-          }`}
-        >
-          {me.totalBalance > 0
-            ? `+$${me.totalBalance.toFixed(2)}`
-            : me.totalBalance < 0
-              ? `-$${Math.abs(me.totalBalance).toFixed(2)}`
-              : "$0.00"}
-        </p>
-        <p className="text-sm text-muted-foreground mt-1">
-          {me.totalBalance > 0
-            ? "You are owed money"
-            : me.totalBalance < 0
-              ? "You owe money"
-              : "You are all settled up"}
-        </p>
-      </div>
-
-      {isAllSettledUp ? (
-        <div className="text-center py-4">
-          <p className="text-muted-foreground">Everyone is settled up!</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {/* People who owe the current user */}
-          {owedByMembers.length > 0 && (
-            <div>
-              <h3 className="text-sm font-medium flex items-center mb-3">
-                <ArrowUpCircle className="h-4 w-4 text-green-500 mr-2" />
-               You Are Owed
-              </h3>
-              <div className="space-y-3">
-                {owedByMembers.map((member) => (
-                  <div
-                    key={member.id}
-                    className="flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={member.imageUrl} />
-                        <AvatarFallback>
-                          {member.name?.charAt(0) ?? "?"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm">{member.name}</span>
-                    </div>
-                    <span className="font-medium text-green-600">
-                      ${member.amount.toFixed(2)}
-                    </span>
-                  </div>
-                ))}
+    <Card>
+      <CardHeader>
+        <CardTitle>Group Balances</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-6">
+          {/* Current user's balance */}
+          {me && (
+            <div className="bg-muted rounded-lg p-4">
+              <h3 className="font-medium mb-2">Your balance</h3>
+              <div
+                className={`text-2xl font-bold ${
+                  me.totalBalance > 0
+                    ? "text-green-600"
+                    : me.totalBalance < 0
+                    ? "text-red-600"
+                    : ""
+                }`}
+              >
+                {me.totalBalance > 0
+                  ? `+${currencySymbols[me.currency] || me.currency}${me.totalBalance.toFixed(2)}`
+                  : me.totalBalance < 0
+                  ? `-${currencySymbols[me.currency] || me.currency}${Math.abs(me.totalBalance).toFixed(2)}`
+                  : `${currencySymbols[me.currency] || me.currency}0.00`}
               </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                {me.totalBalance > 0
+                  ? "You are owed money"
+                  : me.totalBalance < 0
+                  ? "You owe money"
+                  : "All settled up!"}
+              </p>
             </div>
           )}
 
-          {/* People the current user owes */}
-          {owingToMembers.length > 0 && (
-            <div>
-              <h3 className="text-sm font-medium flex items-center mb-3">
-                <ArrowDownCircle className="h-4 w-4 text-red-500 mr-2" />
-                You Owe
-              </h3>
-              <div className="space-y-3">
-                {owingToMembers.map((member) => (
+          {/* Other members' balances */}
+          <div>
+            <h3 className="font-medium mb-3">Other members</h3>
+            <div className="space-y-3">
+              {otherMembers.map((member) => {
+                const currencySymbol = currencySymbols[member.currency] || member.currency;
+                return (
                   <div
-                    key={member.id}
-                    className="flex items-center justify-between"
+                    key={member.userId}
+                    className="flex items-center justify-between p-3 border rounded-lg"
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
                         <AvatarImage src={member.imageUrl} />
                         <AvatarFallback>
-                          {member.name?.charAt(0) ?? "?"}
+                          {member.name?.charAt(0)}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-sm">{member.name}</span>
+                      <div>
+                        <p className="font-medium">{member.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {member.amount > 0
+                            ? `You owe ${currencySymbol}${member.amount.toFixed(2)}`
+                            : member.amount < 0
+                            ? `They owe ${currencySymbol}${Math.abs(member.amount).toFixed(2)}`
+                            : "Settled up"}
+                        </p>
+                      </div>
                     </div>
-                    <span className="font-medium text-red-600">
-                      ${member.amount.toFixed(2)}
-                    </span>
+                    <div className="text-right">
+                      <div
+                        className={`font-bold ${
+                          member.totalBalance > 0
+                            ? "text-green-600"
+                            : member.totalBalance < 0
+                            ? "text-red-600"
+                            : ""
+                        }`}
+                      >
+                        {member.totalBalance > 0
+                          ? `+${currencySymbol}${member.totalBalance.toFixed(2)}`
+                          : member.totalBalance < 0
+                          ? `-${currencySymbol}${Math.abs(member.totalBalance).toFixed(2)}`
+                          : `${currencySymbol}0.00`}
+                      </div>
+                    </div>
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
-          )}
+          </div>
         </div>
-      )}
-    </div>
+      </CardContent>
+    </Card>
   );
 }

@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
+import { CurrencySelector } from "@/app/(main)/expenses/new/_components/currency-selector";
 
 // Form schema validation
 const settlementSchema = z.object({
@@ -22,149 +23,127 @@ const settlementSchema = z.object({
     .refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
       message: "Amount must be a positive number",
     }),
+  currency: z.string().min(1, "Currency is required"),
   note: z.string().optional(),
   paymentType: z.enum(["youPaid", "theyPaid"]),
 });
 
-export default function SettlementForm({ entityType, entityData, onSuccess }) {
+export function SettlementForm({ entityType, entityId, onSuccess }) {
+  const [selectedGroupMemberId, setSelectedGroupMemberId] = useState(null);
+  const [selectedCurrency, setSelectedCurrency] = useState("USD");
+
+  // Get settlement data
+  const { data: settlementData } = useConvexQuery(api.settlements.getSettlementData, {
+    entityType,
+    entityId,
+  });
+
+  // Get current user
   const { data: currentUser } = useConvexQuery(api.users.getCurrentUser);
+
+  // Create settlement mutation
   const createSettlement = useConvexMutation(api.settlements.createSettlement);
 
   // Set up form with validation
   const {
     register,
     handleSubmit,
-    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(settlementSchema),
     defaultValues: {
       amount: "",
+      currency: "USD",
       note: "",
       paymentType: "youPaid",
     },
   });
 
-  // Get selected payment direction
-  const paymentType = watch("paymentType");
-
-  // Single user settlement
-  const handleUserSettlement = async (data) => {
-    const amount = parseFloat(data.amount);
-
-    try {
-      // Determine payer and receiver based on the selected payment type
-      const paidByUserId =
-        data.paymentType === "youPaid"
-          ? currentUser._id
-          : entityData.counterpart.userId;
-
-      const receivedByUserId =
-        data.paymentType === "youPaid"
-          ? entityData.counterpart.userId
-          : currentUser._id;
-
-      await createSettlement.mutate({
-        amount,
-        note: data.note,
-        paidByUserId,
-        receivedByUserId,
-        // No groupId for user settlements
-      });
-
-      toast.success("Settlement recorded successfully!");
-      if (onSuccess) onSuccess();
-    } catch (error) {
-      toast.error("Failed to record settlement: " + error.message);
-    }
-  };
-
-  // Group settlement
-  const handleGroupSettlement = async (data, selectedUserId) => {
-    if (!selectedUserId) {
-      toast.error("Please select a group member to settle with");
-      return;
-    }
-
-    const amount = parseFloat(data.amount);
-
-    try {
-      // Get the selected user from the group balances
-      const selectedUser = entityData.balances.find(
-        (balance) => balance.userId === selectedUserId
-      );
-
-      if (!selectedUser) {
-        toast.error("Selected user not found in group");
-        return;
-      }
-
-      // Determine payer and receiver based on the selected payment type and balances
-      const paidByUserId =
-        data.paymentType === "youPaid" ? currentUser._id : selectedUser.userId;
-
-      const receivedByUserId =
-        data.paymentType === "youPaid" ? selectedUser.userId : currentUser._id;
-
-      await createSettlement.mutate({
-        amount,
-        note: data.note,
-        paidByUserId,
-        receivedByUserId,
-        groupId: entityData.group.id,
-      });
-
-      toast.success("Settlement recorded successfully!");
-      if (onSuccess) onSuccess();
-    } catch (error) {
-      toast.error("Failed to record settlement: " + error.message);
-    }
-  };
-
   // Handle form submission
   const onSubmit = async (data) => {
-    if (entityType === "user") {
-      await handleUserSettlement(data);
-    } else if (entityType === "group" && selectedGroupMemberId) {
-      await handleGroupSettlement(data, selectedGroupMemberId);
+    try {
+      const amount = parseFloat(data.amount);
+
+      if (entityType === "user") {
+        // Individual settlement
+        const paidByUserId =
+          data.paymentType === "youPaid" ? currentUser._id : entityId;
+        const receivedByUserId =
+          data.paymentType === "youPaid" ? entityId : currentUser._id;
+
+        await createSettlement.mutate({
+          amount,
+          currency: selectedCurrency,
+          note: data.note,
+          paidByUserId,
+          receivedByUserId,
+          groupId: undefined,
+        });
+      } else {
+        // Group settlement
+        const paidByUserId =
+          data.paymentType === "youPaid" ? currentUser._id : selectedGroupMemberId;
+        const receivedByUserId =
+          data.paymentType === "youPaid" ? selectedGroupMemberId : currentUser._id;
+
+        await createSettlement.mutate({
+          amount,
+          currency: selectedCurrency,
+          note: data.note,
+          paidByUserId,
+          receivedByUserId,
+          groupId: entityId,
+        });
+      }
+
+      toast.success("Settlement recorded successfully!");
+      if (onSuccess) onSuccess();
+    } catch (error) {
+      toast.error("Failed to record settlement: " + error.message);
     }
   };
 
-  // For group settlements, we need to select a member
-  const [selectedGroupMemberId, setSelectedGroupMemberId] = useState(null);
+  if (!settlementData || !currentUser) return null;
 
-  if (!currentUser) return null;
-
-  // Render the form for individual settlement
+  // Render form for individual settlement
   if (entityType === "user") {
-    const otherUser = entityData.counterpart;
-    const netBalance = entityData.netBalance;
+    const { counterpart, netBalance } = settlementData;
 
     return (
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* Balance information */}
-        <div className="bg-muted p-4 rounded-lg">
-          <h3 className="font-medium mb-2">Current balance</h3>
-          {netBalance === 0 ? (
-            <p>You are all settled up with {otherUser.name}</p>
-          ) : netBalance > 0 ? (
-            <div className="flex justify-between items-center">
-              <p>
-                <span className="font-medium">{otherUser.name}</span> owes you
-              </p>
-              <span className="text-xl font-bold text-green-600">
-                ${netBalance.toFixed(2)}
-              </span>
-            </div>
-          ) : (
-            <div className="flex justify-between items-center">
-              <p>
-                You owe <span className="font-medium">{otherUser.name}</span>
-              </p>
-              <span className="text-xl font-bold text-red-600">
-                ${Math.abs(netBalance).toFixed(2)}
-              </span>
-            </div>
+        {/* Amount */}
+        <div className="space-y-2">
+          <Label htmlFor="amount">Amount</Label>
+          <div className="relative">
+            <span className="absolute left-3 top-2.5">{selectedCurrency === "USD" ? "$" : selectedCurrency === "INR" ? "₹" : selectedCurrency === "EUR" ? "€" : selectedCurrency === "GBP" ? "£" : selectedCurrency === "JPY" ? "¥" : selectedCurrency === "AUD" ? "A$" : selectedCurrency}</span>
+            <Input
+              id="amount"
+              placeholder="0.00"
+              type="number"
+              step="0.01"
+              min="0.01"
+              className="pl-7"
+              {...register("amount")}
+            />
+          </div>
+          {errors.amount && (
+            <p className="text-sm text-red-500">{errors.amount.message}</p>
+          )}
+        </div>
+
+        {/* Currency */}
+        <div className="space-y-2">
+          <Label>Currency</Label>
+          <CurrencySelector
+            value={selectedCurrency}
+            onChange={(currency) => {
+              setSelectedCurrency(currency);
+              setValue("currency", currency);
+            }}
+          />
+          {errors.currency && (
+            <p className="text-sm text-red-500">{errors.currency.message}</p>
           )}
         </div>
 
@@ -176,7 +155,6 @@ export default function SettlementForm({ entityType, entityData, onSuccess }) {
             {...register("paymentType")}
             className="flex flex-col space-y-2"
             onValueChange={(value) => {
-              // This manual approach is needed because RadioGroup doesn't work directly with react-hook-form
               register("paymentType").onChange({
                 target: { name: "paymentType", value },
               });
@@ -192,44 +170,25 @@ export default function SettlementForm({ entityType, entityData, onSuccess }) {
                       {currentUser.name.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
-                  <span>You paid {otherUser.name}</span>
+                  <span>You paid {counterpart.name}</span>
                 </div>
               </Label>
             </div>
-
             <div className="flex items-center space-x-2 border rounded-md p-3">
               <RadioGroupItem value="theyPaid" id="theyPaid" />
               <Label htmlFor="theyPaid" className="flex-grow cursor-pointer">
                 <div className="flex items-center">
                   <Avatar className="h-6 w-6 mr-2">
-                    <AvatarImage src={otherUser.imageUrl} />
-                    <AvatarFallback>{otherUser.name.charAt(0)}</AvatarFallback>
+                    <AvatarImage src={counterpart.imageUrl} />
+                    <AvatarFallback>
+                      {counterpart.name.charAt(0)}
+                    </AvatarFallback>
                   </Avatar>
-                  <span>{otherUser.name} paid you</span>
+                  <span>{counterpart.name} paid you</span>
                 </div>
               </Label>
             </div>
           </RadioGroup>
-        </div>
-
-        {/* Amount */}
-        <div className="space-y-2">
-          <Label htmlFor="amount">Amount</Label>
-          <div className="relative">
-            <span className="absolute left-3 top-2.5">$</span>
-            <Input
-              id="amount"
-              placeholder="0.00"
-              type="number"
-              step="0.01"
-              min="0.01"
-              className="pl-7"
-              {...register("amount")}
-            />
-          </div>
-          {errors.amount && (
-            <p className="text-sm text-red-500">{errors.amount.message}</p>
-          )}
         </div>
 
         {/* Note */}
@@ -275,42 +234,76 @@ export default function SettlementForm({ entityType, entityData, onSuccess }) {
                   onClick={() => setSelectedGroupMemberId(member.userId)}
                 >
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
                         <AvatarImage src={member.imageUrl} />
-                        <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
+                        <AvatarFallback>
+                          {member.name.charAt(0)}
+                        </AvatarFallback>
                       </Avatar>
-                      <span className="font-medium">{member.name}</span>
-                    </div>
-                    <div
-                      className={`font-medium ${
-                        isOwing
-                          ? "text-green-600"
-                          : isOwed
-                            ? "text-red-600"
-                            : ""
-                      }`}
-                    >
-                      {isOwing
-                        ? `They owe you $${Math.abs(member.netBalance).toFixed(2)}`
-                        : isOwed
-                          ? `You owe $${Math.abs(member.netBalance).toFixed(2)}`
-                          : "Settled up"}
+                      <div>
+                        <p className="font-medium">{member.name}</p>
+                        <p
+                          className={`text-sm ${
+                            isOwing
+                              ? "text-green-600"
+                              : isOwed
+                              ? "text-red-600"
+                              : "text-muted-foreground"
+                          }`}
+                        >
+                          {isOwing
+                            ? `They owe you ${selectedCurrency === "USD" ? "$" : selectedCurrency === "INR" ? "₹" : selectedCurrency === "EUR" ? "€" : selectedCurrency === "GBP" ? "£" : selectedCurrency === "JPY" ? "¥" : selectedCurrency === "AUD" ? "A$" : selectedCurrency}${Math.abs(member.netBalance).toFixed(2)}`
+                            : isOwed
+                            ? `You owe ${selectedCurrency === "USD" ? "$" : selectedCurrency === "INR" ? "₹" : selectedCurrency === "EUR" ? "€" : selectedCurrency === "GBP" ? "£" : selectedCurrency === "JPY" ? "¥" : selectedCurrency === "AUD" ? "A$" : selectedCurrency}${Math.abs(member.netBalance).toFixed(2)}`
+                            : "Settled up"}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
               );
             })}
           </div>
-          {!selectedGroupMemberId && (
-            <p className="text-sm text-amber-600">
-              Please select a member to settle with
-            </p>
-          )}
         </div>
 
         {selectedGroupMemberId && (
           <>
+            {/* Amount */}
+            <div className="space-y-2">
+              <Label htmlFor="amount">Amount</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-2.5">{selectedCurrency === "USD" ? "$" : selectedCurrency === "INR" ? "₹" : selectedCurrency === "EUR" ? "€" : selectedCurrency === "GBP" ? "£" : selectedCurrency === "JPY" ? "¥" : selectedCurrency === "AUD" ? "A$" : selectedCurrency}</span>
+                <Input
+                  id="amount"
+                  placeholder="0.00"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  className="pl-7"
+                  {...register("amount")}
+                />
+              </div>
+              {errors.amount && (
+                <p className="text-sm text-red-500">{errors.amount.message}</p>
+              )}
+            </div>
+
+            {/* Currency */}
+            <div className="space-y-2">
+              <Label>Currency</Label>
+              <CurrencySelector
+                value={selectedCurrency}
+                onChange={(currency) => {
+                  setSelectedCurrency(currency);
+                  setValue("currency", currency);
+                }}
+              />
+              {errors.currency && (
+                <p className="text-sm text-red-500">{errors.currency.message}</p>
+              )}
+            </div>
+
             {/* Payment direction */}
             <div className="space-y-2">
               <Label>Who paid?</Label>
@@ -345,13 +338,9 @@ export default function SettlementForm({ entityType, entityData, onSuccess }) {
                     </div>
                   </Label>
                 </div>
-
                 <div className="flex items-center space-x-2 border rounded-md p-3">
                   <RadioGroupItem value="theyPaid" id="theyPaid" />
-                  <Label
-                    htmlFor="theyPaid"
-                    className="flex-grow cursor-pointer"
-                  >
+                  <Label htmlFor="theyPaid" className="flex-grow cursor-pointer">
                     <div className="flex items-center">
                       <Avatar className="h-6 w-6 mr-2">
                         <AvatarImage
@@ -362,9 +351,11 @@ export default function SettlementForm({ entityType, entityData, onSuccess }) {
                           }
                         />
                         <AvatarFallback>
-                          {groupMembers
-                            .find((m) => m.userId === selectedGroupMemberId)
-                            ?.name.charAt(0)}
+                          {
+                            groupMembers.find(
+                              (m) => m.userId === selectedGroupMemberId
+                            )?.name.charAt(0)
+                          }
                         </AvatarFallback>
                       </Avatar>
                       <span>
@@ -381,26 +372,6 @@ export default function SettlementForm({ entityType, entityData, onSuccess }) {
               </RadioGroup>
             </div>
 
-            {/* Amount */}
-            <div className="space-y-2">
-              <Label htmlFor="amount">Amount</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-2.5">$</span>
-                <Input
-                  id="amount"
-                  placeholder="0.00"
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  className="pl-7"
-                  {...register("amount")}
-                />
-              </div>
-              {errors.amount && (
-                <p className="text-sm text-red-500">{errors.amount.message}</p>
-              )}
-            </div>
-
             {/* Note */}
             <div className="space-y-2">
               <Label htmlFor="note">Note (optional)</Label>
@@ -410,16 +381,12 @@ export default function SettlementForm({ entityType, entityData, onSuccess }) {
                 {...register("note")}
               />
             </div>
+
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? "Recording..." : "Record settlement"}
+            </Button>
           </>
         )}
-
-        <Button
-          type="submit"
-          className="w-full"
-          disabled={isSubmitting || !selectedGroupMemberId}
-        >
-          {isSubmitting ? "Recording..." : "Record settlement"}
-        </Button>
       </form>
     );
   }

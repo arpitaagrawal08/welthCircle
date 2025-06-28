@@ -8,6 +8,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeftRight } from "lucide-react";
 import Link from "next/link";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useUser } from "@clerk/nextjs";
+import { currencySymbols } from "@/lib/currencies";
 
 export function SettlementList({
   settlements,
@@ -15,6 +18,7 @@ export function SettlementList({
   userLookupMap,
 }) {
   const { data: currentUser } = useConvexQuery(api.users.getCurrentUser);
+  const { user } = useUser();
   console.log("settlements", settlements);
 
   if (!settlements || !settlements.length) {
@@ -41,39 +45,48 @@ export function SettlementList({
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="space-y-4">
       {settlements.map((settlement) => {
         const payer = getUserDetails(settlement.paidByUserId);
         const receiver = getUserDetails(settlement.receivedByUserId);
         const isCurrentUserPayer = settlement.paidByUserId === currentUser?._id;
         const isCurrentUserReceiver =
           settlement.receivedByUserId === currentUser?._id;
+        const currencySymbol = currencySymbols[settlement.currency] || settlement.currency;
+
+        // Determine the other person involved
+        let otherPerson;
+        if (isCurrentUserPayer) {
+          otherPerson = receiver;
+        } else {
+          otherPerson = payer;
+        }
+
+        // Determine the description
+        let description;
+        if (isCurrentUserPayer) {
+          description = `You paid ${otherPerson.name}`;
+        } else if (isCurrentUserReceiver) {
+          description = `${otherPerson.name} paid you`;
+        } else {
+          description = `${payer.name} paid ${receiver.name}`;
+        }
 
         return (
-          <Card
-            className="hover:bg-muted/30 transition-colors"
-            key={settlement._id}
-          >
-            <CardContent className="py-4">
+          <Card key={settlement._id} className="overflow-hidden">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  {/* Settlement icon */}
-                  <div className="bg-primary/10 p-2 rounded-full">
-                    <ArrowLeftRight className="h-5 w-5 text-primary" />
-                  </div>
-
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={otherPerson.imageUrl} />
+                    <AvatarFallback>
+                      {otherPerson.name?.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
                   <div>
-                    <h3 className="font-medium">
-                      {isCurrentUserPayer
-                        ? `You paid ${receiver.name}`
-                        : isCurrentUserReceiver
-                          ? `${payer.name} paid you`
-                          : `${payer.name} paid ${receiver.name}`}
-                    </h3>
-                    <div className="flex items-center text-sm text-muted-foreground gap-2">
-                      <span>
-                        {format(new Date(settlement.date), "MMM d, yyyy")}
-                      </span>
+                    <p className="font-medium">{description}</p>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <span>{format(new Date(settlement.date), "MMM d, yyyy")}</span>
                       {settlement.note && (
                         <>
                           <span>•</span>
@@ -85,23 +98,20 @@ export function SettlementList({
                 </div>
 
                 <div className="text-right">
-                  <div className="font-medium">
-                    ${settlement.amount.toFixed(2)}
+                  <div className="font-bold text-lg">
+                    {currencySymbol}{settlement.amount.toFixed(2)}
                   </div>
                   {isGroupSettlement ? (
                     <Badge variant="outline" className="mt-1">
                       Group settlement
                     </Badge>
                   ) : (
-                    <div className="text-sm text-muted-foreground">
-                      {isCurrentUserPayer ? (
-                        <span className="text-amber-600">You paid</span>
-                      ) : isCurrentUserReceiver ? (
-                        <span className="text-green-600">You received</span>
-                      ) : (
-                        <span>Payment</span>
-                      )}
-                    </div>
+                    <Badge
+                      variant={isCurrentUserPayer ? "outline" : "secondary"}
+                      className="mt-1"
+                    >
+                      {isCurrentUserPayer ? "You paid" : "You received"}
+                    </Badge>
                   )}
                 </div>
               </div>

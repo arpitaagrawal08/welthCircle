@@ -16,6 +16,7 @@ export default defineSchema({
   expenses: defineTable({
     description: v.string(),
     amount: v.number(),
+    currency: v.string(), // Currency code (USD, INR, EUR, etc.)
     category: v.optional(v.string()),
     date: v.number(), // timestamp
     paidByUserId: v.id("users"), // Reference to users table
@@ -37,6 +38,7 @@ export default defineSchema({
   // Settlements
   settlements: defineTable({
     amount: v.number(),
+    currency: v.string(), // Currency code for settlements
     note: v.optional(v.string()),
     date: v.number(), // timestamp
     paidByUserId: v.id("users"), // Reference to users table

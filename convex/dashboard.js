@@ -26,11 +26,11 @@ export const getUserBalances = query({
           // skip user's own splits or already paid ones
           if (s.userId === user._id || s.paid) continue;
           youAreOwed += s.amount;
-          (balanceByUser[s.userId] ??= { owed: 0, owing: 0 }).owed += s.amount;
+          (balanceByUser[s.userId] ??= { owed: 0, owing: 0, currency: e.currency }).owed += s.amount;
         }
       } else if (mySplit && !mySplit.paid) {
         youOwe += mySplit.amount;
-        (balanceByUser[e.paidByUserId] ??= { owed: 0, owing: 0 }).owing +=
+        (balanceByUser[e.paidByUserId] ??= { owed: 0, owing: 0, currency: e.currency }).owing +=
           mySplit.amount;
       }
     }
@@ -49,12 +49,14 @@ export const getUserBalances = query({
         (balanceByUser[s.receivedByUserId] ??= {
           owed: 0,
           owing: 0,
+          currency: s.currency,
         }).owing -= s.amount;
       } else {
         youAreOwed -= s.amount;
         (balanceByUser[s.paidByUserId] ??= {
           owed: 0,
           owing: 0,
+          currency: s.currency,
         }).owed -= s.amount;
       }
     }
@@ -63,7 +65,7 @@ export const getUserBalances = query({
     const youOweList = [];
     const youAreOwedList = [];
 
-    for (const [uid, { owed, owing }] of Object.entries(balanceByUser)) {
+    for (const [uid, { owed, owing, currency }] of Object.entries(balanceByUser)) {
       const net = owed - owing;
       if (net === 0) continue;
       const counterpart = await ctx.db.get(uid);
@@ -72,6 +74,7 @@ export const getUserBalances = query({
         name: counterpart?.name ?? "Unknown",
         imageUrl: counterpart?.imageUrl,
         amount: Math.abs(net),
+        currency: currency || "USD",
       };
       net > 0 ? youAreOwedList.push(base) : youOweList.push(base);
     }
