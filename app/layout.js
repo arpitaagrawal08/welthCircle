@@ -6,7 +6,8 @@ import { ClerkProvider } from "@clerk/nextjs";
 import SyncUserToConvex from "@/components/SyncUserToConvex";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "next-themes";
-import { CurrencyProvider } from "@/context/CurrencyContext"; // 👈 NEW
+import { CurrencyProvider } from "@/context/CurrencyContext";
+import ChatbotWrapper from "@/components/ChatbotWrapper"; // ✅ NEW
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,7 +22,7 @@ export default function RootLayout({ children }) {
       <body className={inter.className}>
         <ClerkProvider>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-            <CurrencyProvider> {/* 👈 Currency state available everywhere */}
+            <CurrencyProvider>
               <ConvexClientProvider>
                 <SyncUserToConvex />
                 <Header />
@@ -29,6 +30,7 @@ export default function RootLayout({ children }) {
                   {children}
                   <Toaster richColors />
                 </main>
+                <ChatbotWrapper /> {/* ✅ FIXED */}
               </ConvexClientProvider>
             </CurrencyProvider>
           </ThemeProvider>
