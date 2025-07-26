@@ -54,7 +54,7 @@ export default function HomePage() {
                   <FeatureItem icon={<PieChart />} label="Budget Planning" color="blue" />
                   <FeatureItem icon={<CreditCard />} label="Multi-Account Support" color="blue" />
                 </div>
-                <Link href="https://welth-hww5.vercel.app/dashboard">
+                <Link href="https://welth.netlify.app/dashboard">
                   <Button size="lg" className="w-full bg-blue-600 hover:bg-blue-700 text-white group-hover:shadow-lg transition-all">
                     Start Personal Finance
                     <ArrowRight className="ml-2 h-4 w-4" />
@@ -150,7 +150,7 @@ export default function HomePage() {
             Whether you're managing personal finances or splitting expenses with others, we have the perfect solution for you.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="http://localhost:3000/dashboard" target="_blank" rel="noopener noreferrer">
+            <Link href="https://welth.netlify.app/dashboard" target="_blank" rel="noopener noreferrer">
               <Button size="lg" className="bg-blue-600 hover:bg-blue-700 px-8 text-white">
                 Try Personal Finance
               </Button>
