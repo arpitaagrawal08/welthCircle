@@ -9,7 +9,7 @@ import { internal } from "./_generated/api";
 export const createSettlement = mutation({
   args: {
     amount: v.number(), // must be > 0
-    currency: v.string(), // Currency code
+    currency: v.optional(v.string()), // Currency code
     note: v.optional(v.string()),
     paidByUserId: v.id("users"),
     receivedByUserId: v.id("users"),

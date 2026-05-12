@@ -7,7 +7,7 @@ export const createExpense = mutation({
   args: {
     description: v.string(),
     amount: v.number(),
-    currency: v.string(), // Currency code
+    currency: v.optional(v.string()), // Currency code
     category: v.optional(v.string()),
     date: v.number(), // timestamp
     paidByUserId: v.id("users"),
