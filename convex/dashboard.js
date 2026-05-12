@@ -13,8 +13,6 @@ export const getUserBalances = query({
           e.splits.some((s) => s.userId === user._id))
     );
 
-    let youOwe = 0;
-    let youAreOwed = 0;
     const balanceByUser = {};
 
     for (const e of expenses) {
@@ -25,11 +23,9 @@ export const getUserBalances = query({
         for (const s of e.splits) {
           // skip user's own splits or already paid ones
           if (s.userId === user._id || s.paid) continue;
-          youAreOwed += s.amount;
           (balanceByUser[s.userId] ??= { owed: 0, owing: 0, currency: e.currency }).owed += s.amount;
         }
       } else if (mySplit && !mySplit.paid) {
-        youOwe += mySplit.amount;
         (balanceByUser[e.paidByUserId] ??= { owed: 0, owing: 0, currency: e.currency }).owing +=
           mySplit.amount;
       }
@@ -45,14 +41,12 @@ export const getUserBalances = query({
     // Adjust with settlements
     for (const s of settlements) {
       if (s.paidByUserId === user._id) {
-        youOwe -= s.amount;
         (balanceByUser[s.receivedByUserId] ??= {
           owed: 0,
           owing: 0,
           currency: s.currency,
         }).owing -= s.amount;
       } else {
-        youAreOwed -= s.amount;
         (balanceByUser[s.paidByUserId] ??= {
           owed: 0,
           owing: 0,
@@ -82,10 +76,13 @@ export const getUserBalances = query({
     youOweList.sort((a, b) => b.amount - a.amount);
     youAreOwedList.sort((a, b) => b.amount - a.amount);
 
+    const calculatedYouOwe = youOweList.reduce((acc, item) => acc + item.amount, 0);
+    const calculatedYouAreOwed = youAreOwedList.reduce((acc, item) => acc + item.amount, 0);
+
     return {
-      youOwe,
-      youAreOwed,
-      totalBalance: youAreOwed - youOwe,
+      youOwe: calculatedYouOwe,
+      youAreOwed: calculatedYouAreOwed,
+      totalBalance: calculatedYouAreOwed - calculatedYouOwe,
       oweDetails: { youOwe: youOweList, youAreOwedBy: youAreOwedList },
     };
   },
